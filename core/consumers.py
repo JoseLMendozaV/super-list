@@ -31,6 +31,13 @@ class ShoppingListConsumer(AsyncWebsocketConsumer):
                 self.group_name,
                 {'type': 'item_update', 'action': 'edit', 'item_id': data['item_id'], 'new_name': data['new_name']}
             )
+            
+        elif action == 'update_quantity':
+            await self.update_quantity_db(data['item_id'], data['new_quantity'])
+            await self.channel_layer.group_send(
+                self.group_name,
+                {'type': 'item_update', 'action': 'update_qty', 'item_id': data['item_id'], 'new_quantity': data['new_quantity']}
+            )
 
         # --- ACCIONES PARA LISTAS ---
         elif action == 'delete_list':
@@ -59,6 +66,10 @@ class ShoppingListConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def edit_item_db(self, item_id, new_name):
         Item.objects.filter(id=item_id).update(name=new_name)
+        
+    @database_sync_to_async
+    def update_quantity_db(self, item_id, new_quantity):
+        Item.objects.filter(id=item_id).update(quantity=new_quantity)
 
     @database_sync_to_async
     def delete_list_db(self, list_id):
