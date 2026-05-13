@@ -9,22 +9,27 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 
 import os
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-import core.routing
 
-# Apunta a la configuración de tu proyecto
+# 1. Apunta a los settings de tu proyecto
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
-# Configuración del enrutador ASGI
+# 2. INICIALIZA DJANGO PRIMERO (Esta es la línea que soluciona el error)
+django_asgi_app = get_asgi_application()
+
+# 3. AHORA SÍ importamos Channels y tus rutas, porque Django ya está listo
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
+from core.routing import websocket_urlpatterns
+
+# 4. Enrutador principal
 application = ProtocolTypeRouter({
-    # Maneja las peticiones tradicionales (vistas, carga de página inicial)
-    "http": get_asgi_application(),
+    # Maneja el tráfico HTTP normal
+    "http": django_asgi_app,
     
-    # Maneja las conexiones en tiempo real (cuando el navegador abre el WebSocket)
+    # Maneja los WebSockets
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            core.routing.websocket_urlpatterns
+            websocket_urlpatterns
         )
     ),
 })
