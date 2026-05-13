@@ -4,158 +4,606 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Listas de Supermercado</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 p-6 font-sans">
-    <div class="max-w-5xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Mis Listas de Compras</h1>
-
-        <!-- Formulario para crear una NUEVA LISTA -->
-        <form id="create-list-form" class="bg-white p-4 rounded-lg shadow mb-8 flex gap-4 max-w-xl mx-auto">
-            {% csrf_token %}
-            <input type="text" id="new-list-name" placeholder="Nombre de la lista (Ej. Super Extra)" required class="border p-2 rounded flex-1">
-            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition font-bold">Crear Lista</button>
-        </form>
-
-        <!-- Contenedor Grid de todas las listas -->
-        <div id="lists-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for list in lists %}
-                <!-- Tarjeta de cada lista -->
-                <div id="list-card-{{ list.id }}" class="bg-white rounded-lg shadow border-t-4 border-indigo-500 flex flex-col">
-                    <div class="p-4 bg-gray-50 border-b">
-                        <h2 class="text-xl font-bold text-gray-800">{{ list.name }}</h2>
-                    </div>
-                    
-                    <!-- Formulario exclusivo para añadir a esta lista -->
-                    <form onsubmit="submitItem(event, {{ list.id }})" class="p-4 border-b flex flex-col gap-2 bg-gray-50">
-                        <input type="text" id="item-name-{{ list.id }}" placeholder="Producto (ej. Leche)" required class="border p-2 rounded text-sm">
-                        <div class="flex gap-2">
-                            <input type="file" id="item-image-{{ list.id }}" accept="image/*" class="border p-1 rounded text-xs flex-1 bg-white">
-                            <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition">Añadir</button>
-                        </div>
-                    </form>
-
-                    <!-- Ítems de esta lista -->
-                    <div id="items-for-{{ list.id }}" class="p-4 flex-1 overflow-y-auto max-h-96">
-                        {% for item in list.items.all %}
-                            <div id="item-{{ item.id }}" class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded border transition-all duration-1000 ease-out">
-                                <div class="flex items-center gap-3">
-                                    <input type="checkbox" onclick="markDone({{ item.id }})" class="w-5 h-5 text-green-600 rounded cursor-pointer">
-                                    <p class="font-medium text-gray-700">{{ item.name }}</p>
-                                </div>
-                                {% if item.image %}
-                                    <img src="{{ item.image.url }}" alt="img" class="w-10 h-10 object-cover rounded shadow-sm">
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
 
     <script>
-        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        const socket = new WebSocket(protocol + window.location.host + '/ws/shopping-list/');
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef6ff',
+                            100: '#d9ecff',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                            900: '#172554'
+                        }
+                    },
+                    boxShadow: {
+                        soft: '0 18px 45px rgba(15, 23, 42, 0.08)'
+                    }
+                }
+            }
+        }
+    </script>
 
-        socket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            
-            // Si alguien crea una nueva lista
-            if (data.action === 'add_list') {
-                const list = data.list;
-                const newListHtml = `
-                <div id="list-card-${list.id}" class="bg-white rounded-lg shadow border-t-4 border-indigo-500 flex flex-col opacity-0 scale-95 transition-all duration-500">
-                    <div class="p-4 bg-gray-50 border-b">
-                        <h2 class="text-xl font-bold text-gray-800">${list.name}</h2>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-slate-100 text-slate-800 font-sans">
+    <div class="absolute inset-x-0 top-0 h-72 bg-gradient-to-br from-brand-900 via-brand-700 to-cyan-700"></div>
+
+    <main class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+        <!-- Encabezado -->
+        <section class="mb-8 lg:mb-10">
+            <div class="bg-white/95 backdrop-blur rounded-3xl shadow-soft border border-white/70 p-6 lg:p-8">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    <div>
+                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-sm font-semibold border border-brand-100">
+                            Gestión colaborativa en tiempo real
+                        </span>
+
+                        <h1 class="mt-4 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-950">
+                            Mis Listas de Compras
+                        </h1>
+
+                        <p class="mt-3 max-w-2xl text-slate-600 text-base lg:text-lg">
+                            Organiza productos por supermercado, añade imágenes de referencia y actualiza las listas en tiempo real desde cualquier dispositivo conectado.
+                        </p>
                     </div>
-                    <form onsubmit="submitItem(event, ${list.id})" class="p-4 border-b flex flex-col gap-2 bg-gray-50">
-                        <input type="text" id="item-name-${list.id}" placeholder="Producto (ej. Leche)" required class="border p-2 rounded text-sm">
-                        <div class="flex gap-2">
-                            <input type="file" id="item-image-${list.id}" accept="image/*" class="border p-1 rounded text-xs flex-1 bg-white">
-                            <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition">Añadir</button>
+
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 p-4 min-w-full sm:min-w-[280px] lg:min-w-[320px]">
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <p class="text-sm text-slate-500">Estado de conexión</p>
+                                <p id="connection-text" class="text-lg font-bold text-slate-800">Conectando...</p>
+                            </div>
+
+                            <div id="connection-dot" class="w-4 h-4 rounded-full bg-amber-400 shadow"></div>
+                        </div>
+
+                        <p class="mt-3 text-xs text-slate-500">
+                            Las listas se sincronizan automáticamente mediante WebSocket.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Formulario para crear lista -->
+        <section class="mb-8">
+            <form id="create-list-form" class="bg-white rounded-3xl shadow-soft border border-slate-200 p-5 lg:p-6">
+                {% csrf_token %}
+
+                <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 lg:items-end">
+                    <div>
+                        <label for="new-list-name" class="block text-sm font-semibold text-slate-700 mb-2">
+                            Nombre de la nueva lista
+                        </label>
+
+                        <input
+                            type="text"
+                            id="new-list-name"
+                            placeholder="Ejemplo: Super Extra, Pricesmart, Romero"
+                            required
+                            maxlength="80"
+                            class="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-800 placeholder:text-slate-400 outline-none transition focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        id="create-list-button"
+                        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700 hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                    >
+                        <span>Crear lista</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Contenedor de listas -->
+        <section>
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-white lg:text-slate-950">
+                        Listas activas
+                    </h2>
+                    <p class="text-sm text-white/80 lg:text-slate-500">
+                        Cada tarjeta representa una lista independiente de compras.
+                    </p>
+                </div>
+            </div>
+
+            <div id="lists-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {% for list in lists %}
+                    <!-- Tarjeta de lista -->
+                    <article
+                        id="list-card-{{ list.id }}"
+                        class="group bg-white rounded-3xl shadow-soft border border-slate-200 overflow-hidden flex flex-col transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+                    >
+                        <!-- Header de tarjeta -->
+                        <div class="p-5 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="min-w-0">
+                                    <p class="text-xs uppercase tracking-wider font-bold text-brand-600">
+                                        Lista de supermercado
+                                    </p>
+
+                                    <h3 class="mt-1 text-xl font-extrabold text-slate-900 break-words">
+                                        {{ list.name }}
+                                    </h3>
+                                </div>
+
+                                <div class="shrink-0 rounded-2xl bg-brand-50 border border-brand-100 px-3 py-2 text-center">
+                                    <p id="count-{{ list.id }}" class="text-lg font-extrabold text-brand-700">
+                                        {{ list.items.count }}
+                                    </p>
+                                    <p class="text-[11px] font-semibold text-brand-700">
+                                        productos
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario para añadir producto -->
+                        <form onsubmit="submitItem(event, {{ list.id }})" class="p-5 border-b border-slate-200 bg-slate-50">
+                            <label for="item-name-{{ list.id }}" class="block text-sm font-semibold text-slate-700 mb-2">
+                                Añadir producto
+                            </label>
+
+                            <input
+                                type="text"
+                                id="item-name-{{ list.id }}"
+                                placeholder="Ejemplo: Leche, arroz, café"
+                                required
+                                maxlength="100"
+                                class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                            >
+
+                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+                                <input
+                                    type="file"
+                                    id="item-image-{{ list.id }}"
+                                    accept="image/*"
+                                    class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-200 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-300"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                                >
+                                    Añadir
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Ítems -->
+                        <div id="items-for-{{ list.id }}" class="p-5 flex-1 overflow-y-auto max-h-[420px] custom-scrollbar bg-white">
+                            {% for item in list.items.all %}
+                                <div
+                                    id="item-{{ item.id }}"
+                                    class="flex items-center justify-between gap-4 bg-slate-50 p-3 mb-3 rounded-2xl border border-slate-200 transition-all duration-700 ease-out hover:bg-white hover:shadow-sm"
+                                >
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <input
+                                            type="checkbox"
+                                            onclick="markDone({{ item.id }})"
+                                            class="w-5 h-5 accent-green-600 rounded cursor-pointer shrink-0"
+                                            aria-label="Marcar producto como comprado"
+                                        >
+
+                                        <p class="font-semibold text-slate-700 break-words">
+                                            {{ item.name }}
+                                        </p>
+                                    </div>
+
+                                    {% if item.image %}
+                                        <img
+                                            src="{{ item.image.url }}"
+                                            alt="Imagen de {{ item.name }}"
+                                            class="w-12 h-12 object-cover rounded-2xl shadow-sm border border-slate-200 shrink-0"
+                                        >
+                                    {% endif %}
+                                </div>
+                            {% empty %}
+                                <div id="empty-{{ list.id }}" class="text-center border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
+                                    <p class="font-bold text-slate-700">No hay productos todavía</p>
+                                    <p class="mt-1 text-sm text-slate-500">
+                                        Añade el primer producto para comenzar esta lista.
+                                    </p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </article>
+                {% empty %}
+                    <div id="global-empty-state" class="md:col-span-2 xl:col-span-3 bg-white rounded-3xl shadow-soft border border-slate-200 p-10 text-center">
+                        <p class="text-xl font-extrabold text-slate-800">Aún no tienes listas creadas</p>
+                        <p class="mt-2 text-slate-500">
+                            Crea tu primera lista de compras usando el formulario superior.
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let socket = null;
+
+        const connectionDot = document.getElementById('connection-dot');
+        const connectionText = document.getElementById('connection-text');
+
+        function setConnectionStatus(status) {
+            if (!connectionDot || !connectionText) return;
+
+            if (status === 'connected') {
+                connectionText.textContent = 'Conectado';
+                connectionDot.className = 'w-4 h-4 rounded-full bg-emerald-500 shadow';
+            } else if (status === 'disconnected') {
+                connectionText.textContent = 'Desconectado';
+                connectionDot.className = 'w-4 h-4 rounded-full bg-red-500 shadow';
+            } else {
+                connectionText.textContent = 'Conectando...';
+                connectionDot.className = 'w-4 h-4 rounded-full bg-amber-400 shadow';
+            }
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value ?? '';
+            return div.innerHTML;
+        }
+
+        function getCsrfToken() {
+            const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+            return tokenInput ? tokenInput.value : '';
+        }
+
+        function removeGlobalEmptyState() {
+            const emptyState = document.getElementById('global-empty-state');
+            if (emptyState) emptyState.remove();
+        }
+
+        function removeListEmptyState(listId) {
+            const emptyState = document.getElementById(`empty-${listId}`);
+            if (emptyState) emptyState.remove();
+        }
+
+        function increaseCounter(listId) {
+            const counter = document.getElementById(`count-${listId}`);
+            if (!counter) return;
+
+            const current = parseInt(counter.textContent.trim(), 10) || 0;
+            counter.textContent = current + 1;
+        }
+
+        function decreaseCounterByItem(itemId) {
+            const item = document.getElementById(`item-${itemId}`);
+            if (!item) return;
+
+            const listContainer = item.closest('[id^="items-for-"]');
+            if (!listContainer) return;
+
+            const listId = listContainer.id.replace('items-for-', '');
+            const counter = document.getElementById(`count-${listId}`);
+
+            if (counter) {
+                const current = parseInt(counter.textContent.trim(), 10) || 0;
+                counter.textContent = Math.max(current - 1, 0);
+            }
+        }
+
+        function createListCard(list) {
+            const safeName = escapeHtml(list.name);
+
+            return `
+                <article
+                    id="list-card-${list.id}"
+                    class="group bg-white rounded-3xl shadow-soft border border-slate-200 overflow-hidden flex flex-col opacity-0 scale-95 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl"
+                >
+                    <div class="p-5 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <p class="text-xs uppercase tracking-wider font-bold text-brand-600">
+                                    Lista de supermercado
+                                </p>
+
+                                <h3 class="mt-1 text-xl font-extrabold text-slate-900 break-words">
+                                    ${safeName}
+                                </h3>
+                            </div>
+
+                            <div class="shrink-0 rounded-2xl bg-brand-50 border border-brand-100 px-3 py-2 text-center">
+                                <p id="count-${list.id}" class="text-lg font-extrabold text-brand-700">0</p>
+                                <p class="text-[11px] font-semibold text-brand-700">productos</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form onsubmit="submitItem(event, ${list.id})" class="p-5 border-b border-slate-200 bg-slate-50">
+                        <label for="item-name-${list.id}" class="block text-sm font-semibold text-slate-700 mb-2">
+                            Añadir producto
+                        </label>
+
+                        <input
+                            type="text"
+                            id="item-name-${list.id}"
+                            placeholder="Ejemplo: Leche, arroz, café"
+                            required
+                            maxlength="100"
+                            class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                        >
+
+                        <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+                            <input
+                                type="file"
+                                id="item-image-${list.id}"
+                                accept="image/*"
+                                class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-slate-200 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-300"
+                            >
+
+                            <button
+                                type="submit"
+                                class="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-100"
+                            >
+                                Añadir
+                            </button>
                         </div>
                     </form>
-                    <div id="items-for-${list.id}" class="p-4 flex-1 overflow-y-auto max-h-96"></div>
-                </div>`;
-                
-                document.getElementById('lists-container').insertAdjacentHTML('afterbegin', newListHtml);
-                setTimeout(() => {
-                    document.getElementById(`list-card-${list.id}`).classList.remove('opacity-0', 'scale-95');
-                }, 50);
-            }
 
-            // Si alguien añade un ítem a una lista específica
-            if (data.action === 'add') {
-                const item = data.item;
-                const imgHtml = item.image_url ? `<img src="${item.image_url}" class="w-10 h-10 object-cover rounded shadow-sm">` : '';
-                
-                const newItemHtml = `
-                <div id="item-${item.id}" class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded border opacity-0 scale-95 transition-all duration-1000 ease-out">
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" onclick="markDone(${item.id})" class="w-5 h-5 text-green-600 rounded cursor-pointer">
-                        <p class="font-medium text-gray-700">${item.name}</p>
+                    <div id="items-for-${list.id}" class="p-5 flex-1 overflow-y-auto max-h-[420px] custom-scrollbar bg-white">
+                        <div id="empty-${list.id}" class="text-center border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
+                            <p class="font-bold text-slate-700">No hay productos todavía</p>
+                            <p class="mt-1 text-sm text-slate-500">
+                                Añade el primer producto para comenzar esta lista.
+                            </p>
+                        </div>
                     </div>
-                    ${imgHtml}
-                </div>`;
-                
-                const container = document.getElementById(`items-for-${item.list_id}`);
-                if (container) {
-                    container.insertAdjacentHTML('afterbegin', newItemHtml);
+                </article>
+            `;
+        }
+
+        function createItemCard(item) {
+            const safeName = escapeHtml(item.name);
+
+            const imageHtml = item.image_url
+                ? `
+                    <img
+                        src="${escapeHtml(item.image_url)}"
+                        alt="Imagen de ${safeName}"
+                        class="w-12 h-12 object-cover rounded-2xl shadow-sm border border-slate-200 shrink-0"
+                    >
+                `
+                : '';
+
+            return `
+                <div
+                    id="item-${item.id}"
+                    class="flex items-center justify-between gap-4 bg-slate-50 p-3 mb-3 rounded-2xl border border-slate-200 opacity-0 scale-95 transition-all duration-700 ease-out hover:bg-white hover:shadow-sm"
+                >
+                    <div class="flex items-center gap-3 min-w-0">
+                        <input
+                            type="checkbox"
+                            onclick="markDone(${item.id})"
+                            class="w-5 h-5 accent-green-600 rounded cursor-pointer shrink-0"
+                            aria-label="Marcar producto como comprado"
+                        >
+
+                        <p class="font-semibold text-slate-700 break-words">
+                            ${safeName}
+                        </p>
+                    </div>
+
+                    ${imageHtml}
+                </div>
+            `;
+        }
+
+        function connectSocket() {
+            setConnectionStatus('connecting');
+
+            const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            socket = new WebSocket(protocol + window.location.host + '/ws/shopping-list/');
+
+            socket.onopen = function () {
+                setConnectionStatus('connected');
+            };
+
+            socket.onclose = function () {
+                setConnectionStatus('disconnected');
+
+                setTimeout(() => {
+                    connectSocket();
+                }, 3000);
+            };
+
+            socket.onerror = function () {
+                setConnectionStatus('disconnected');
+            };
+
+            socket.onmessage = function (e) {
+                const data = JSON.parse(e.data);
+
+                if (data.action === 'add_list') {
+                    removeGlobalEmptyState();
+
+                    const list = data.list;
+                    const listsContainer = document.getElementById('lists-container');
+
+                    listsContainer.insertAdjacentHTML('afterbegin', createListCard(list));
+
                     setTimeout(() => {
-                        document.getElementById(`item-${item.id}`).classList.remove('opacity-0', 'scale-95');
+                        const card = document.getElementById(`list-card-${list.id}`);
+                        if (card) card.classList.remove('opacity-0', 'scale-95');
                     }, 50);
                 }
-            }
-            
-            // Si alguien le da ganchito a un ítem
-            if (data.action === 'done') {
-                const el = document.getElementById(`item-${data.item_id}`);
-                if (el) {
-                    el.classList.add('opacity-0', 'translate-x-full');
-                    el.querySelector('input').disabled = true; 
-                    setTimeout(() => el.remove(), 1000);
+
+                if (data.action === 'add') {
+                    const item = data.item;
+                    const container = document.getElementById(`items-for-${item.list_id}`);
+
+                    if (container) {
+                        removeListEmptyState(item.list_id);
+                        container.insertAdjacentHTML('afterbegin', createItemCard(item));
+                        increaseCounter(item.list_id);
+
+                        setTimeout(() => {
+                            const element = document.getElementById(`item-${item.id}`);
+                            if (element) element.classList.remove('opacity-0', 'scale-95');
+                        }, 50);
+                    }
                 }
-            }
-        };
 
-        // Crear una nueva lista (Fetch)
-        document.getElementById('create-list-form').onsubmit = function(e) {
+                if (data.action === 'done') {
+                    const element = document.getElementById(`item-${data.item_id}`);
+
+                    if (element) {
+                        decreaseCounterByItem(data.item_id);
+
+                        const checkbox = element.querySelector('input');
+                        if (checkbox) checkbox.disabled = true;
+
+                        element.classList.add('opacity-0', 'translate-x-full');
+
+                        setTimeout(() => {
+                            const listContainer = element.closest('[id^="items-for-"]');
+                            element.remove();
+
+                            if (listContainer && listContainer.children.length === 0) {
+                                const listId = listContainer.id.replace('items-for-', '');
+
+                                listContainer.insertAdjacentHTML('beforeend', `
+                                    <div id="empty-${listId}" class="text-center border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
+                                        <p class="font-bold text-slate-700">No hay productos todavía</p>
+                                        <p class="mt-1 text-sm text-slate-500">
+                                            Añade el primer producto para comenzar esta lista.
+                                        </p>
+                                    </div>
+                                `);
+                            }
+                        }, 700);
+                    }
+                }
+            };
+        }
+
+        document.getElementById('create-list-form').onsubmit = function (e) {
             e.preventDefault();
-            const formData = new FormData();
-            formData.append('name', document.getElementById('new-list-name').value);
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
 
-            fetch('/add-list/', { method: 'POST', body: formData })
-                .then(() => document.getElementById('create-list-form').reset());
+            const input = document.getElementById('new-list-name');
+            const button = document.getElementById('create-list-button');
+            const name = input.value.trim();
+
+            if (!name) return;
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+            button.disabled = true;
+            button.classList.add('opacity-70', 'cursor-not-allowed');
+
+            fetch('/add-list/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('No se pudo crear la lista.');
+                }
+
+                document.getElementById('create-list-form').reset();
+            })
+            .catch(() => {
+                alert('Ocurrió un error al crear la lista. Intenta nuevamente.');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.classList.remove('opacity-70', 'cursor-not-allowed');
+            });
         };
 
-        // Añadir un ítem a una lista específica (Fetch)
         function submitItem(e, listId) {
             e.preventDefault();
-            const formData = new FormData();
-            formData.append('name', document.getElementById(`item-name-${listId}`).value);
-            formData.append('list_id', listId);
-            
+
+            const nameInput = document.getElementById(`item-name-${listId}`);
             const imageInput = document.getElementById(`item-image-${listId}`);
-            if(imageInput.files[0]) {
+            const submitButton = e.target.querySelector('button[type="submit"]');
+
+            const name = nameInput.value.trim();
+
+            if (!name) return;
+
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('list_id', listId);
+            formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+            if (imageInput.files[0]) {
                 formData.append('image', imageInput.files[0]);
             }
-            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
 
-            fetch('/add-item/', { method: 'POST', body: formData })
-                .then(() => {
-                    document.getElementById(`item-name-${listId}`).value = '';
-                    imageInput.value = '';
-                });
+            submitButton.disabled = true;
+            submitButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+            fetch('/add-item/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('No se pudo añadir el producto.');
+                }
+
+                nameInput.value = '';
+                imageInput.value = '';
+            })
+            .catch(() => {
+                alert('Ocurrió un error al añadir el producto. Intenta nuevamente.');
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.classList.remove('opacity-70', 'cursor-not-allowed');
+            });
         }
 
         function markDone(itemId) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                alert('No hay conexión activa con el servidor. Intenta nuevamente en unos segundos.');
+                return;
+            }
+
             socket.send(JSON.stringify({
-                'action': 'mark_done',
-                'item_id': itemId
+                action: 'mark_done',
+                item_id: itemId
             }));
         }
+
+        connectSocket();
     </script>
 </body>
 </html>
