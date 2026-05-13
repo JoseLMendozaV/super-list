@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listas de Supermercado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6 font-sans">
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Mis Listas de Compras</h1>
+
+        <!-- Formulario para crear una NUEVA LISTA -->
+        <form id="create-list-form" class="bg-white p-4 rounded-lg shadow mb-8 flex gap-4 max-w-xl mx-auto">
+            {% csrf_token %}
+            <input type="text" id="new-list-name" placeholder="Nombre de la lista (Ej. Super Extra)" required class="border p-2 rounded flex-1">
+            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition font-bold">Crear Lista</button>
+        </form>
+
+        <!-- Contenedor Grid de todas las listas -->
+        <div id="lists-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for list in lists %}
+                <!-- Tarjeta de cada lista -->
+                <div id="list-card-{{ list.id }}" class="bg-white rounded-lg shadow border-t-4 border-indigo-500 flex flex-col">
+                    <div class="p-4 bg-gray-50 border-b">
+                        <h2 class="text-xl font-bold text-gray-800">{{ list.name }}</h2>
+                    </div>
+                    
+                    <!-- Formulario exclusivo para añadir a esta lista -->
+                    <form onsubmit="submitItem(event, {{ list.id }})" class="p-4 border-b flex flex-col gap-2 bg-gray-50">
+                        <input type="text" id="item-name-{{ list.id }}" placeholder="Producto (ej. Leche)" required class="border p-2 rounded text-sm">
+                        <div class="flex gap-2">
+                            <input type="file" id="item-image-{{ list.id }}" accept="image/*" class="border p-1 rounded text-xs flex-1 bg-white">
+                            <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition">Añadir</button>
+                        </div>
+                    </form>
+
+                    <!-- Ítems de esta lista -->
+                    <div id="items-for-{{ list.id }}" class="p-4 flex-1 overflow-y-auto max-h-96">
+                        {% for item in list.items.all %}
+                            <div id="item-{{ item.id }}" class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded border transition-all duration-1000 ease-out">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox" onclick="markDone({{ item.id }})" class="w-5 h-5 text-green-600 rounded cursor-pointer">
+                                    <p class="font-medium text-gray-700">{{ item.name }}</p>
+                                </div>
+                                {% if item.image %}
+                                    <img src="{{ item.image.url }}" alt="img" class="w-10 h-10 object-cover rounded shadow-sm">
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const socket = new WebSocket(protocol + window.location.host + '/ws/shopping-list/');
+
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            
+            // Si alguien crea una nueva lista
+            if (data.action === 'add_list') {
+                const list = data.list;
+                const newListHtml = `
+                <div id="list-card-${list.id}" class="bg-white rounded-lg shadow border-t-4 border-indigo-500 flex flex-col opacity-0 scale-95 transition-all duration-500">
+                    <div class="p-4 bg-gray-50 border-b">
+                        <h2 class="text-xl font-bold text-gray-800">${list.name}</h2>
+                    </div>
+                    <form onsubmit="submitItem(event, ${list.id})" class="p-4 border-b flex flex-col gap-2 bg-gray-50">
+                        <input type="text" id="item-name-${list.id}" placeholder="Producto (ej. Leche)" required class="border p-2 rounded text-sm">
+                        <div class="flex gap-2">
+                            <input type="file" id="item-image-${list.id}" accept="image/*" class="border p-1 rounded text-xs flex-1 bg-white">
+                            <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition">Añadir</button>
+                        </div>
+                    </form>
+                    <div id="items-for-${list.id}" class="p-4 flex-1 overflow-y-auto max-h-96"></div>
+                </div>`;
+                
+                document.getElementById('lists-container').insertAdjacentHTML('afterbegin', newListHtml);
+                setTimeout(() => {
+                    document.getElementById(`list-card-${list.id}`).classList.remove('opacity-0', 'scale-95');
+                }, 50);
+            }
+
+            // Si alguien añade un ítem a una lista específica
+            if (data.action === 'add') {
+                const item = data.item;
+                const imgHtml = item.image_url ? `<img src="${item.image_url}" class="w-10 h-10 object-cover rounded shadow-sm">` : '';
+                
+                const newItemHtml = `
+                <div id="item-${item.id}" class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded border opacity-0 scale-95 transition-all duration-1000 ease-out">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" onclick="markDone(${item.id})" class="w-5 h-5 text-green-600 rounded cursor-pointer">
+                        <p class="font-medium text-gray-700">${item.name}</p>
+                    </div>
+                    ${imgHtml}
+                </div>`;
+                
+                const container = document.getElementById(`items-for-${item.list_id}`);
+                if (container) {
+                    container.insertAdjacentHTML('afterbegin', newItemHtml);
+                    setTimeout(() => {
+                        document.getElementById(`item-${item.id}`).classList.remove('opacity-0', 'scale-95');
+                    }, 50);
+                }
+            }
+            
+            // Si alguien le da ganchito a un ítem
+            if (data.action === 'done') {
+                const el = document.getElementById(`item-${data.item_id}`);
+                if (el) {
+                    el.classList.add('opacity-0', 'translate-x-full');
+                    el.querySelector('input').disabled = true; 
+                    setTimeout(() => el.remove(), 1000);
+                }
+            }
+        };
+
+        // Crear una nueva lista (Fetch)
+        document.getElementById('create-list-form').onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('name', document.getElementById('new-list-name').value);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('/add-list/', { method: 'POST', body: formData })
+                .then(() => document.getElementById('create-list-form').reset());
+        };
+
+        // Añadir un ítem a una lista específica (Fetch)
+        function submitItem(e, listId) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('name', document.getElementById(`item-name-${listId}`).value);
+            formData.append('list_id', listId);
+            
+            const imageInput = document.getElementById(`item-image-${listId}`);
+            if(imageInput.files[0]) {
+                formData.append('image', imageInput.files[0]);
+            }
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('/add-item/', { method: 'POST', body: formData })
+                .then(() => {
+                    document.getElementById(`item-name-${listId}`).value = '';
+                    imageInput.value = '';
+                });
+        }
+
+        function markDone(itemId) {
+            socket.send(JSON.stringify({
+                'action': 'mark_done',
+                'item_id': itemId
+            }));
+        }
+    </script>
+</body>
+</html>
