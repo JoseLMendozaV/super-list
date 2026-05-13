@@ -57,6 +57,7 @@
     <div class="absolute inset-x-0 top-0 h-72 bg-gradient-to-br from-brand-900 via-brand-700 to-cyan-700"></div>
 
     <main class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+
         <!-- Encabezado -->
         <section class="mb-8 lg:mb-10">
             <div class="bg-white/95 backdrop-blur rounded-3xl shadow-soft border border-white/70 p-6 lg:p-8">
@@ -71,7 +72,7 @@
                         </h1>
 
                         <p class="mt-3 max-w-2xl text-slate-600 text-base lg:text-lg">
-                            Organiza productos por supermercado, añade imágenes de referencia y actualiza las listas en tiempo real desde cualquier dispositivo conectado.
+                            Organiza productos por supermercado, añade imágenes de referencia y administra tus listas con opciones de edición y eliminación.
                         </p>
                     </div>
 
@@ -86,14 +87,14 @@
                         </div>
 
                         <p class="mt-3 text-xs text-slate-500">
-                            Las listas se sincronizan automáticamente mediante WebSocket.
+                            Las actualizaciones se sincronizan automáticamente mediante WebSocket.
                         </p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Formulario para crear lista -->
+        <!-- Crear nueva lista -->
         <section class="mb-8">
             <form id="create-list-form" class="bg-white rounded-3xl shadow-soft border border-slate-200 p-5 lg:p-6">
                 {% csrf_token %}
@@ -119,13 +120,13 @@
                         id="create-list-button"
                         class="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700 hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-brand-100"
                     >
-                        <span>Crear lista</span>
+                        Crear lista
                     </button>
                 </div>
             </form>
         </section>
 
-        <!-- Contenedor de listas -->
+        <!-- Listas -->
         <section>
             <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
                 <div>
@@ -133,19 +134,18 @@
                         Listas activas
                     </h2>
                     <p class="text-sm text-white/80 lg:text-slate-500">
-                        Cada tarjeta representa una lista independiente de compras.
+                        Edita, elimina o actualiza productos en cada lista de compras.
                     </p>
                 </div>
             </div>
 
             <div id="lists-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {% for list in lists %}
-                    <!-- Tarjeta de lista -->
                     <article
                         id="list-card-{{ list.id }}"
-                        class="group bg-white rounded-3xl shadow-soft border border-slate-200 overflow-hidden flex flex-col transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+                        class="group/list bg-white rounded-3xl shadow-soft border border-slate-200 overflow-hidden flex flex-col transition duration-300 hover:-translate-y-1 hover:shadow-xl"
                     >
-                        <!-- Header de tarjeta -->
+                        <!-- Encabezado de tarjeta -->
                         <div class="p-5 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200">
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
@@ -153,23 +153,52 @@
                                         Lista de supermercado
                                     </p>
 
-                                    <h3 class="mt-1 text-xl font-extrabold text-slate-900 break-words">
+                                    <h3 id="list-title-{{ list.id }}" class="mt-1 text-xl font-extrabold text-slate-900 break-words">
                                         {{ list.name }}
                                     </h3>
                                 </div>
 
-                                <div class="shrink-0 rounded-2xl bg-brand-50 border border-brand-100 px-3 py-2 text-center">
-                                    <p id="count-{{ list.id }}" class="text-lg font-extrabold text-brand-700">
-                                        {{ list.items.count }}
-                                    </p>
-                                    <p class="text-[11px] font-semibold text-brand-700">
-                                        productos
-                                    </p>
+                                <div class="flex items-start gap-2 shrink-0">
+                                    <div class="rounded-2xl bg-brand-50 border border-brand-100 px-3 py-2 text-center">
+                                        <p id="count-{{ list.id }}" class="text-lg font-extrabold text-brand-700">
+                                            {{ list.items.count }}
+                                        </p>
+                                        <p class="text-[11px] font-semibold text-brand-700">
+                                            productos
+                                        </p>
+                                    </div>
+
+                                    <div class="flex gap-1 opacity-100 lg:opacity-0 lg:group-hover/list:opacity-100 transition-opacity">
+                                        <button
+                                            type="button"
+                                            onclick="editList({{ list.id }}, document.getElementById('list-title-{{ list.id }}').innerText)"
+                                            title="Editar lista"
+                                            class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 transition hover:bg-blue-600 hover:text-white"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 20h9"/>
+                                                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                            </svg>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onclick="deleteList({{ list.id }})"
+                                            title="Eliminar lista"
+                                            class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-red-50 text-red-700 border border-red-100 transition hover:bg-red-600 hover:text-white"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M3 6h18"/>
+                                                <path d="M8 6V4h8v2"/>
+                                                <path d="M19 6l-1 14H6L5 6"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Formulario para añadir producto -->
+                        <!-- Añadir producto -->
                         <form onsubmit="submitItem(event, {{ list.id }})" class="p-5 border-b border-slate-200 bg-slate-50">
                             <label for="item-name-{{ list.id }}" class="block text-sm font-semibold text-slate-700 mb-2">
                                 Añadir producto
@@ -201,12 +230,12 @@
                             </div>
                         </form>
 
-                        <!-- Ítems -->
+                        <!-- Productos -->
                         <div id="items-for-{{ list.id }}" class="p-5 flex-1 overflow-y-auto max-h-[420px] custom-scrollbar bg-white">
                             {% for item in list.items.all %}
                                 <div
                                     id="item-{{ item.id }}"
-                                    class="flex items-center justify-between gap-4 bg-slate-50 p-3 mb-3 rounded-2xl border border-slate-200 transition-all duration-700 ease-out hover:bg-white hover:shadow-sm"
+                                    class="group/item flex items-center justify-between gap-4 bg-slate-50 p-3 mb-3 rounded-2xl border border-slate-200 transition-all duration-700 ease-out hover:bg-white hover:shadow-sm"
                                 >
                                     <div class="flex items-center gap-3 min-w-0">
                                         <input
@@ -216,18 +245,45 @@
                                             aria-label="Marcar producto como comprado"
                                         >
 
-                                        <p class="font-semibold text-slate-700 break-words">
+                                        <p id="item-text-{{ item.id }}" class="font-semibold text-slate-700 break-words">
                                             {{ item.name }}
                                         </p>
                                     </div>
 
-                                    {% if item.image %}
-                                        <img
-                                            src="{{ item.image.url }}"
-                                            alt="Imagen de {{ item.name }}"
-                                            class="w-12 h-12 object-cover rounded-2xl shadow-sm border border-slate-200 shrink-0"
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        {% if item.image %}
+                                            <img
+                                                src="{{ item.image.url }}"
+                                                alt="Imagen de {{ item.name }}"
+                                                class="w-12 h-12 object-cover rounded-2xl shadow-sm border border-slate-200"
+                                            >
+                                        {% endif %}
+
+                                        <button
+                                            type="button"
+                                            onclick="editItem({{ item.id }}, document.getElementById('item-text-{{ item.id }}').innerText)"
+                                            title="Editar producto"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 opacity-100 lg:opacity-0 lg:group-hover/item:opacity-100 transition hover:bg-blue-600 hover:text-white"
                                         >
-                                    {% endif %}
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 20h9"/>
+                                                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                            </svg>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onclick="deleteItem({{ item.id }})"
+                                            title="Eliminar producto"
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-red-50 text-red-700 border border-red-100 opacity-100 lg:opacity-0 lg:group-hover/item:opacity-100 transition hover:bg-red-600 hover:text-white"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M3 6h18"/>
+                                                <path d="M8 6V4h8v2"/>
+                                                <path d="M19 6l-1 14H6L5 6"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             {% empty %}
                                 <div id="empty-{{ list.id }}" class="text-center border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
@@ -288,9 +344,43 @@
             if (emptyState) emptyState.remove();
         }
 
+        function showGlobalEmptyStateIfNeeded() {
+            const listsContainer = document.getElementById('lists-container');
+            const activeLists = listsContainer.querySelectorAll('[id^="list-card-"]');
+
+            if (activeLists.length === 0 && !document.getElementById('global-empty-state')) {
+                listsContainer.insertAdjacentHTML('beforeend', `
+                    <div id="global-empty-state" class="md:col-span-2 xl:col-span-3 bg-white rounded-3xl shadow-soft border border-slate-200 p-10 text-center">
+                        <p class="text-xl font-extrabold text-slate-800">Aún no tienes listas creadas</p>
+                        <p class="mt-2 text-slate-500">
+                            Crea tu primera lista de compras usando el formulario superior.
+                        </p>
+                    </div>
+                `);
+            }
+        }
+
         function removeListEmptyState(listId) {
             const emptyState = document.getElementById(`empty-${listId}`);
             if (emptyState) emptyState.remove();
+        }
+
+        function showListEmptyStateIfNeeded(listId) {
+            const listContainer = document.getElementById(`items-for-${listId}`);
+            if (!listContainer) return;
+
+            const activeItems = listContainer.querySelectorAll('[id^="item-"]');
+
+            if (activeItems.length === 0 && !document.getElementById(`empty-${listId}`)) {
+                listContainer.insertAdjacentHTML('beforeend', `
+                    <div id="empty-${listId}" class="text-center border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
+                        <p class="font-bold text-slate-700">No hay productos todavía</p>
+                        <p class="mt-1 text-sm text-slate-500">
+                            Añade el primer producto para comenzar esta lista.
+                        </p>
+                    </div>
+                `);
+            }
         }
 
         function increaseCounter(listId) {
@@ -315,6 +405,33 @@
                 const current = parseInt(counter.textContent.trim(), 10) || 0;
                 counter.textContent = Math.max(current - 1, 0);
             }
+
+            return listId;
+        }
+
+        function createActionButton(type, onclick, title) {
+            const isEdit = type === 'edit';
+
+            const classes = isEdit
+                ? 'inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 opacity-100 lg:opacity-0 lg:group-hover/item:opacity-100 transition hover:bg-blue-600 hover:text-white'
+                : 'inline-flex items-center justify-center w-8 h-8 rounded-xl bg-red-50 text-red-700 border border-red-100 opacity-100 lg:opacity-0 lg:group-hover/item:opacity-100 transition hover:bg-red-600 hover:text-white';
+
+            const icon = isEdit
+                ? `<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                   </svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18"/>
+                        <path d="M8 6V4h8v2"/>
+                        <path d="M19 6l-1 14H6L5 6"/>
+                   </svg>`;
+
+            return `
+                <button type="button" onclick="${onclick}" title="${title}" class="${classes}">
+                    ${icon}
+                </button>
+            `;
         }
 
         function createListCard(list) {
@@ -323,7 +440,7 @@
             return `
                 <article
                     id="list-card-${list.id}"
-                    class="group bg-white rounded-3xl shadow-soft border border-slate-200 overflow-hidden flex flex-col opacity-0 scale-95 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl"
+                    class="group/list bg-white rounded-3xl shadow-soft border border-slate-200 overflow-hidden flex flex-col opacity-0 scale-95 transition-all duration-500 hover:-translate-y-1 hover:shadow-xl"
                 >
                     <div class="p-5 bg-gradient-to-br from-slate-50 to-white border-b border-slate-200">
                         <div class="flex items-start justify-between gap-4">
@@ -332,14 +449,43 @@
                                     Lista de supermercado
                                 </p>
 
-                                <h3 class="mt-1 text-xl font-extrabold text-slate-900 break-words">
+                                <h3 id="list-title-${list.id}" class="mt-1 text-xl font-extrabold text-slate-900 break-words">
                                     ${safeName}
                                 </h3>
                             </div>
 
-                            <div class="shrink-0 rounded-2xl bg-brand-50 border border-brand-100 px-3 py-2 text-center">
-                                <p id="count-${list.id}" class="text-lg font-extrabold text-brand-700">0</p>
-                                <p class="text-[11px] font-semibold text-brand-700">productos</p>
+                            <div class="flex items-start gap-2 shrink-0">
+                                <div class="rounded-2xl bg-brand-50 border border-brand-100 px-3 py-2 text-center">
+                                    <p id="count-${list.id}" class="text-lg font-extrabold text-brand-700">0</p>
+                                    <p class="text-[11px] font-semibold text-brand-700">productos</p>
+                                </div>
+
+                                <div class="flex gap-1 opacity-100 lg:opacity-0 lg:group-hover/list:opacity-100 transition-opacity">
+                                    <button
+                                        type="button"
+                                        onclick="editList(${list.id}, document.getElementById('list-title-${list.id}').innerText)"
+                                        title="Editar lista"
+                                        class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-100 transition hover:bg-blue-600 hover:text-white"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 20h9"/>
+                                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                                        </svg>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick="deleteList(${list.id})"
+                                        title="Eliminar lista"
+                                        class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-red-50 text-red-700 border border-red-100 transition hover:bg-red-600 hover:text-white"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18"/>
+                                            <path d="M8 6V4h8v2"/>
+                                            <path d="M19 6l-1 14H6L5 6"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -395,7 +541,7 @@
                     <img
                         src="${escapeHtml(item.image_url)}"
                         alt="Imagen de ${safeName}"
-                        class="w-12 h-12 object-cover rounded-2xl shadow-sm border border-slate-200 shrink-0"
+                        class="w-12 h-12 object-cover rounded-2xl shadow-sm border border-slate-200"
                     >
                 `
                 : '';
@@ -403,7 +549,7 @@
             return `
                 <div
                     id="item-${item.id}"
-                    class="flex items-center justify-between gap-4 bg-slate-50 p-3 mb-3 rounded-2xl border border-slate-200 opacity-0 scale-95 transition-all duration-700 ease-out hover:bg-white hover:shadow-sm"
+                    class="group/item flex items-center justify-between gap-4 bg-slate-50 p-3 mb-3 rounded-2xl border border-slate-200 opacity-0 scale-95 transition-all duration-700 ease-out hover:bg-white hover:shadow-sm"
                 >
                     <div class="flex items-center gap-3 min-w-0">
                         <input
@@ -413,12 +559,26 @@
                             aria-label="Marcar producto como comprado"
                         >
 
-                        <p class="font-semibold text-slate-700 break-words">
+                        <p id="item-text-${item.id}" class="font-semibold text-slate-700 break-words">
                             ${safeName}
                         </p>
                     </div>
 
-                    ${imageHtml}
+                    <div class="flex items-center gap-2 shrink-0">
+                        ${imageHtml}
+
+                        ${createActionButton(
+                            'edit',
+                            `editItem(${item.id}, document.getElementById('item-text-${item.id}').innerText)`,
+                            'Editar producto'
+                        )}
+
+                        ${createActionButton(
+                            'delete',
+                            `deleteItem(${item.id})`,
+                            'Eliminar producto'
+                        )}
+                    </div>
                 </div>
             `;
         }
@@ -448,7 +608,7 @@
             socket.onmessage = function (e) {
                 const data = JSON.parse(e.data);
 
-                if (data.action === 'add_list') {
+                if (data.action === 'add_list' && data.list) {
                     removeGlobalEmptyState();
 
                     const list = data.list;
@@ -462,7 +622,25 @@
                     }, 50);
                 }
 
-                if (data.action === 'add') {
+                if (data.action === 'delete' && data.list_id) {
+                    const listCard = document.getElementById(`list-card-${data.list_id}`);
+
+                    if (listCard) {
+                        listCard.classList.add('opacity-0', 'scale-90');
+
+                        setTimeout(() => {
+                            listCard.remove();
+                            showGlobalEmptyStateIfNeeded();
+                        }, 500);
+                    }
+                }
+
+                if (data.action === 'edit' && data.list_id) {
+                    const title = document.getElementById(`list-title-${data.list_id}`);
+                    if (title) title.innerText = data.new_name;
+                }
+
+                if (data.action === 'add' && data.item) {
                     const item = data.item;
                     const container = document.getElementById(`items-for-${item.list_id}`);
 
@@ -478,35 +656,42 @@
                     }
                 }
 
-                if (data.action === 'done') {
-                    const element = document.getElementById(`item-${data.item_id}`);
+                if (data.action === 'done' && data.item_id) {
+                    const item = document.getElementById(`item-${data.item_id}`);
 
-                    if (element) {
-                        decreaseCounterByItem(data.item_id);
+                    if (item) {
+                        const listId = decreaseCounterByItem(data.item_id);
 
-                        const checkbox = element.querySelector('input');
+                        item.classList.add('opacity-0', 'translate-x-full');
+
+                        const checkbox = item.querySelector('input[type="checkbox"]');
                         if (checkbox) checkbox.disabled = true;
 
-                        element.classList.add('opacity-0', 'translate-x-full');
-
                         setTimeout(() => {
-                            const listContainer = element.closest('[id^="items-for-"]');
-                            element.remove();
-
-                            if (listContainer && listContainer.children.length === 0) {
-                                const listId = listContainer.id.replace('items-for-', '');
-
-                                listContainer.insertAdjacentHTML('beforeend', `
-                                    <div id="empty-${listId}" class="text-center border border-dashed border-slate-300 rounded-2xl p-6 bg-slate-50">
-                                        <p class="font-bold text-slate-700">No hay productos todavía</p>
-                                        <p class="mt-1 text-sm text-slate-500">
-                                            Añade el primer producto para comenzar esta lista.
-                                        </p>
-                                    </div>
-                                `);
-                            }
+                            item.remove();
+                            if (listId) showListEmptyStateIfNeeded(listId);
                         }, 700);
                     }
+                }
+
+                if (data.action === 'delete' && data.item_id) {
+                    const item = document.getElementById(`item-${data.item_id}`);
+
+                    if (item) {
+                        const listId = decreaseCounterByItem(data.item_id);
+
+                        item.classList.add('opacity-0', 'scale-90');
+
+                        setTimeout(() => {
+                            item.remove();
+                            if (listId) showListEmptyStateIfNeeded(listId);
+                        }, 500);
+                    }
+                }
+
+                if (data.action === 'edit' && data.item_id) {
+                    const itemText = document.getElementById(`item-text-${data.item_id}`);
+                    if (itemText) itemText.innerText = data.new_name;
                 }
             };
         }
@@ -591,16 +776,62 @@
             });
         }
 
-        function markDone(itemId) {
+        function sendSocketMessage(payload) {
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 alert('No hay conexión activa con el servidor. Intenta nuevamente en unos segundos.');
                 return;
             }
 
-            socket.send(JSON.stringify({
+            socket.send(JSON.stringify(payload));
+        }
+
+        function markDone(itemId) {
+            sendSocketMessage({
                 action: 'mark_done',
                 item_id: itemId
-            }));
+            });
+        }
+
+        function deleteItem(itemId) {
+            if (confirm('¿Eliminar este producto?')) {
+                sendSocketMessage({
+                    action: 'delete_item',
+                    item_id: itemId
+                });
+            }
+        }
+
+        function editItem(itemId, currentName) {
+            const newName = prompt('Editar nombre del producto:', currentName);
+
+            if (newName && newName.trim() !== '' && newName.trim() !== currentName.trim()) {
+                sendSocketMessage({
+                    action: 'edit_item',
+                    item_id: itemId,
+                    new_name: newName.trim()
+                });
+            }
+        }
+
+        function deleteList(listId) {
+            if (confirm('¿Seguro que deseas eliminar la lista completa? Se borrarán todos sus productos.')) {
+                sendSocketMessage({
+                    action: 'delete_list',
+                    list_id: listId
+                });
+            }
+        }
+
+        function editList(listId, currentName) {
+            const newName = prompt('Editar nombre de la lista:', currentName);
+
+            if (newName && newName.trim() !== '' && newName.trim() !== currentName.trim()) {
+                sendSocketMessage({
+                    action: 'edit_list',
+                    list_id: listId,
+                    new_name: newName.trim()
+                });
+            }
         }
 
         connectSocket();
